@@ -26,6 +26,9 @@
       </div>
     </nav>
     <div class="container my-4 receipt">
+      <div class="receipt-brand mb-3">
+        <img src="/static/company-banner.jpg" alt="Lion Global banner" class="img-fluid w-100 rounded">
+      </div>
       <div class="d-flex justify-content-between align-items-start">
         <div>
           <h4>Lion Car Sale</h4>
@@ -40,7 +43,9 @@
       <hr>
       {% if vehicle %}
         <h5>Buyer</h5>
-        <div>{{ sale.get('buyer','-') }} — {{ sale.get('phone','') }}</div>
+        <div>Name: {{ sale.get('buyer_name') or sale.get('buyer') or '-' }}</div>
+        <div>Phone: {{ sale.get('buyer_phone') or sale.get('phone') or '-' }}</div>
+        <div>Address: {{ sale.get('buyer_address') or '-' }}</div>
         <h5 class="mt-3">Vehicle</h5>
         <div>{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} ({{ vehicle.color }})</div>
         <div>File No: {{ vehicle.get('file_number') or '-' }}</div>
@@ -91,7 +96,14 @@
       {% if sale.get('notes') %}
       <div class="mt-3"><strong>Notes:</strong><div>{{ sale.get('notes') }}</div></div>
       {% endif %}
-      <div class="mt-5">______________________________<br>Seller signature</div>
+      <div class="row mt-5">
+        <div class="col-6">
+          ______________________________<br>Seller signature
+        </div>
+        <div class="col-6 text-end">
+          ______________________________<br>Customer signature
+        </div>
+      </div>
     </div>
     <div class="no-print">{% include "_footer.html" %}</div>
   </body>

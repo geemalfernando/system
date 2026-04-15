@@ -150,9 +150,14 @@
       </div>
       <form method="post" action="/vehicles/{{ vehicle.id }}/sell">
         <div class="row">
-          <div class="col-md-4 mb-2"><label>Sale price</label><input name="sale_price" class="form-control" type="number" step="0.01"></div>
-          <div class="col-md-4 mb-2"><label>Payment</label><input name="payment_method" class="form-control" value="Cash"></div>
-          <div class="col-md-4 mb-2"><label>&nbsp;</label><button class="btn btn-success w-100" {% if vehicle.get('category') != 'inventory' %}disabled{% endif %}>Mark as Sold</button></div>
+          <div class="col-md-4 mb-2"><label>Buyer name</label><input name="buyer_name" class="form-control" required></div>
+          <div class="col-md-4 mb-2"><label>Buyer phone</label><input name="buyer_phone" class="form-control"></div>
+          <div class="col-md-4 mb-2"><label>Sale price</label><input name="sale_price" class="form-control" type="number" step="0.01" required></div>
+        </div>
+        <div class="mb-2"><label>Buyer address</label><input name="buyer_address" class="form-control"></div>
+        <div class="row">
+          <div class="col-md-6 mb-2"><label>Payment</label><input name="payment_method" class="form-control" value="Cash"></div>
+          <div class="col-md-6 mb-2"><label>&nbsp;</label><button class="btn btn-success w-100" {% if vehicle.get('category') != 'inventory' %}disabled{% endif %}>Mark as Sold</button></div>
         </div>
         <div class="mb-2"><label>Notes</label><input name="notes" class="form-control"></div>
       </form>

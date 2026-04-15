@@ -30,7 +30,7 @@
       </div>
       {% if sales %}
       <table class="table">
-        <thead><tr><th>ID</th><th>Vehicle</th><th>File No</th><th>Sale price</th><th>VAT</th><th>SSCL</th><th>Total Tax</th><th>Due date</th><th>Paid</th><th>Outstanding</th><th>Profit</th><th></th></tr></thead>
+        <thead><tr><th>ID</th><th>Vehicle</th><th>File No</th><th>Buyer</th><th>Phone</th><th>Sale price</th><th>VAT</th><th>SSCL</th><th>Total Tax</th><th>Due date</th><th>Paid</th><th>Outstanding</th><th>Profit</th><th></th></tr></thead>
         <tbody>
         {% for s in sales %}
           <tr>
@@ -45,6 +45,8 @@
               {% endif %}
             </td>
             <td>{% if s.get('vehicle') %}{{ s.vehicle.get('file_number') or '-' }}{% else %}-{% endif %}</td>
+            <td>{{ s.get('buyer_name') or s.get('buyer') or '-' }}</td>
+            <td>{{ s.get('buyer_phone') or s.get('phone') or '-' }}</td>
             <td>${{ '%.2f'|format(s.sale_price) }}</td>
             <td>${{ '%.2f'|format(s.get('vat_amount', 0)) }}</td>
             <td>${{ '%.2f'|format(s.get('sscl_amount', 0)) }}</td>

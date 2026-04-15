@@ -538,6 +538,9 @@ def sell_vehicle(vehicle_id):
         return 'Vehicle must be moved to inventory before marking as sold', 400
     form = request.form
     sale_price = float(form.get('sale_price') or 0)
+    buyer_name = (form.get('buyer_name') or '').strip()
+    buyer_address = (form.get('buyer_address') or '').strip()
+    buyer_phone = (form.get('buyer_phone') or '').strip()
     payment_method = form.get('payment_method','Cash')
     notes = form.get('notes','')
     tax_values = compute_sale_taxes(sale_price)
@@ -565,6 +568,9 @@ def sell_vehicle(vehicle_id):
 
     sale_doc = {
         'vehicle_id': vehicle_id,
+        'buyer_name': buyer_name,
+        'buyer_address': buyer_address,
+        'buyer_phone': buyer_phone,
         'sale_price': sale_price,
         'taxable_value': taxable_value,
         'vat_amount': vat_amount,
