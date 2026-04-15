@@ -35,7 +35,7 @@
           <div>Model code: {{ vehicle.model_code }}</div>
           <div>LC No: {{ vehicle.lc_no }}</div>
           <div>Category: {{ vehicle.get('category_label', 'Inventory') }}</div>
-          <div>CIF Price: ${{ '%.2f'|format(vehicle.get('cif_price', 0)) }}</div>
+          <div>LC Value: ${{ '%.2f'|format(vehicle.get('lc_value', vehicle.get('cif_price', 0))) }}</div>
           <div>VAT paid on inventory move: ${{ '%.2f'|format(vehicle.get('vat_paid_on_inventory', 0)) }}</div>
           <div><strong>Current value:</strong> ${{ '%.2f'|format(current_value) }}</div>
           <div>Created: {{ vehicle.get('created_at').strftime('%Y-%m-%d') if vehicle.get('created_at') else '' }}</div>
@@ -120,6 +120,8 @@
         <div class="row g-2">
           <div class="col-md-3"><input name="date" class="form-control" type="date"></div>
           <div class="col-md-3"><select name="category" class="form-select">
+            <option>LC Open</option>
+            <option>LC Pay</option>
             <option>LC Charges</option>
             <option>Customs Duty</option>
             <option>Petrol & Travel</option>

@@ -38,7 +38,7 @@
       </div>
       {% if vehicles %}
       <table class="table table-striped">
-        <thead><tr><th>File No</th><th>Make</th><th>Model</th><th>Chassis</th><th>Category</th><th>CIF Price</th><th>Expenses</th><th>Current value</th><th></th></tr></thead>
+        <thead><tr><th>File No</th><th>Make</th><th>Model</th><th>Chassis</th><th>Category</th><th>LC Value</th><th>Expenses</th><th>Current value</th><th></th></tr></thead>
         <tbody>
         {% for v in vehicles %}
           <tr>
@@ -47,7 +47,7 @@
             <td>{{ v.model }}</td>
             <td>{{ v.chassis_no }}</td>
             <td>{{ v.get('category_label', 'Inventory') }}</td>
-            <td>${{ '%.2f'|format(v.get('cif_price', 0)) }}</td>
+            <td>${{ '%.2f'|format(v.get('lc_value', v.get('cif_price', 0))) }}</td>
             <td>${{ '%.2f'|format(v.get('expenses_total', 0)) }}</td>
             <td class="fw-semibold">${{ '%.2f'|format(v.get('current_value', 0)) }}</td>
             <td><a class="btn btn-sm btn-outline-primary" href="/vehicles/{{ v.id }}">View</a></td>

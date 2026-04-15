@@ -103,10 +103,14 @@ def compute_sale_taxes(sale_price: float):
 def sum_expenses(expenses):
     return round(sum((e.get('amount', 0) for e in expenses)), 2)
 
+def vehicle_base_value(vehicle: dict) -> float:
+    # New records use LC value. Older records may still have CIF price.
+    return float(vehicle.get('lc_value') or vehicle.get('cif_price') or 0)
+
 def vehicle_current_value(vehicle: dict) -> float:
-    cif = float(vehicle.get('cif_price') or 0)
+    base_value = vehicle_base_value(vehicle)
     expenses_total = sum_expenses(vehicle.get('expenses', []))
-    return round(cif + expenses_total, 2)
+    return round(base_value + expenses_total, 2)
 
 def vehicle_category(vehicle: dict) -> str:
     if bool(vehicle.get('sold')):
@@ -393,14 +397,14 @@ def sold_vehicles():
 def create_vehicle():
     if request.method == 'POST':
         form = request.form
-        cif_price = float(form.get('cif_price') or 0)
+        lc_value = float(form.get('lc_value') or 0)
         doc = {
             'file_number': form.get('file_number','').strip(),
             'make': form.get('make',''),
             'model': form.get('model',''),
             'model_code': form.get('model_code',''),
             'chassis_no': form.get('chassis_no',''),
-            'cif_price': cif_price,
+            'lc_value': lc_value,
             'lc_no': form.get('lc_no',''),
             'year': form.get('year',''),
             'color': form.get('color',''),
@@ -563,7 +567,7 @@ def sell_vehicle(vehicle_id):
         )
 
     total_expenses = sum_expenses(v.get('expenses', []))
-    cost_basis = v.get('cif_price', 0) + total_expenses
+    cost_basis = vehicle_base_value(v) + total_expenses
     net_profit = round(sale_price - cost_basis - tax_amount, 2)
 
     sale_doc = {
