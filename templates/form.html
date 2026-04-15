@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'Edit' if sale else 'New' }} Sale</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+  </head>
+  <body class="bg-light">
+    <div class="container mt-4">
+      <a href="/" class="btn btn-link">← Back</a>
+      <h3>{{ 'Edit' if sale else 'New' }} Sale</h3>
+      <form method="post">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Buyer</label>
+            <input name="buyer" class="form-control" value="{{ sale.buyer if sale else '' }}">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Phone</label>
+            <input name="phone" class="form-control" value="{{ sale.phone if sale else '' }}">
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-3 mb-3">
+            <label class="form-label">Make</label>
+            <input name="make" class="form-control" value="{{ sale.make if sale else '' }}">
+          </div>
+          <div class="col-md-3 mb-3">
+            <label class="form-label">Model</label>
+            <input name="model" class="form-control" value="{{ sale.model if sale else '' }}">
+          </div>
+          <div class="col-md-2 mb-3">
+            <label class="form-label">Year</label>
+            <input name="year" class="form-control" value="{{ sale.year if sale else '' }}">
+          </div>
+          <div class="col-md-2 mb-3">
+            <label class="form-label">Color</label>
+            <input name="color" class="form-control" value="{{ sale.color if sale else '' }}">
+          </div>
+          <div class="col-md-2 mb-3">
+            <label class="form-label">Payment</label>
+            <input name="payment_method" class="form-control" value="{{ sale.payment_method if sale else 'Cash' }}">
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label class="form-label">Price</label>
+            <input name="price" class="form-control" type="number" step="0.01" value="{{ sale.price if sale else '' }}">
+          </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-label">Tax rate (%)</label>
+            <input name="tax_rate" class="form-control" type="number" step="0.01" value="{{ sale.tax_rate if sale else '10' }}">
+          </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-label">Profit margin (%)</label>
+            <input name="profit_margin" class="form-control" type="number" step="0.01" value="{{ sale.profit_margin if sale else '10' }}">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Notes</label>
+          <textarea name="notes" class="form-control">{{ sale.notes if sale else '' }}</textarea>
+        </div>
+        <button class="btn btn-primary">Save</button>
+      </form>
+    </div>
+  </body>
+</html>

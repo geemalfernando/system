@@ -1,0 +1,152 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vehicle</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+  </head>
+  <body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark app-navbar mb-4">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">Lion Car Sale</a>
+        <div class="d-flex gap-2">
+          <a class="btn btn-light" href="/vehicles">Vehicles</a>
+          <a class="btn btn-light" href="/vehicles/sold">Sold</a>
+          <a class="btn btn-light" href="/sales">Sales</a>
+          <a class="btn btn-light" href="/tax">Tax</a>
+          <a class="btn btn-light" href="/reports/taxes">Reports</a>
+        </div>
+      </div>
+    </nav>
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <div class="text-muted">Vehicle</div>
+          <h3 class="app-page-title mb-0">{{ vehicle.make }} {{ vehicle.model }}</h3>
+          <div class="text-muted">File No: {{ vehicle.get('file_number') or '-' }} | Chassis: {{ vehicle.chassis_no }}</div>
+        </div>
+        <a href="/vehicles" class="btn btn-outline-primary">Back to vehicles</a>
+      </div>
+      <div class="row">
+        <div class="col-md-6">
+          <h5>Details</h5>
+          <div>Model code: {{ vehicle.model_code }}</div>
+          <div>LC No: {{ vehicle.lc_no }}</div>
+          <div>Category: {{ vehicle.get('category_label', 'Inventory') }}</div>
+          <div>CIF Price: ${{ '%.2f'|format(vehicle.get('cif_price', 0)) }}</div>
+          <div><strong>Current value:</strong> ${{ '%.2f'|format(current_value) }}</div>
+          <div>Created: {{ vehicle.get('created_at').strftime('%Y-%m-%d') if vehicle.get('created_at') else '' }}</div>
+          <div>Sold: {{ 'Yes' if vehicle.get('sold') else 'No' }}</div>
+          {% if not vehicle.get('sold') and vehicle.get('category') == 'shipping' %}
+            <form method="post" action="/vehicles/{{ vehicle.id }}/move-to-inventory" class="mt-2">
+              <button class="btn btn-sm btn-warning">Move to Inventory</button>
+            </form>
+          {% endif %}
+        </div>
+        <div class="col-md-6">
+          <h5>Expenses</h5>
+          <table class="table table-sm">
+            <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Receipt</th><th class="text-end">Amount</th></tr></thead>
+            <tbody>
+              {% for e in vehicle.get('expenses', []) %}
+                <tr>
+                  <td>{{ e.date }}</td>
+                  <td>{{ e.category }}</td>
+                  <td>{{ e.description1 }} {{ e.description2 }}</td>
+                  <td>
+                    {% if e.receipt and e.receipt.stored_name %}
+                      <a href="/uploads/{{ e.receipt.stored_name }}" target="_blank">View</a>
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                  <td class="text-end">${{ '%.2f'|format(e.get('amount', 0)) }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot><tr><th colspan="4">Total expenses</th><th class="text-end">${{ '%.2f'|format(total_expenses) }}</th></tr></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <hr>
+      <h5>Documents</h5>
+      <div class="row">
+        <div class="col-md-6">
+          <form method="post" action="/vehicles/{{ vehicle.id }}/documents" enctype="multipart/form-data">
+            <div class="row">
+              <div class="col-md-4 mb-2"><input name="label" class="form-control" placeholder="Label (optional)"></div>
+              <div class="col-md-6 mb-2"><input name="document" class="form-control" type="file" accept=".pdf,image/*"></div>
+              <div class="col-md-2 mb-2"><button class="btn btn-sm btn-primary w-100">Upload</button></div>
+            </div>
+          </form>
+        </div>
+        <div class="col-md-6">
+          {% if vehicle.get('documents') %}
+            <ul class="list-group list-group-flush">
+              {% for d in vehicle.get('documents', []) %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    {{ d.label if d.label else d.original_name }}
+                    <small class="text-muted">({{ d.content_type }})</small>
+                  </div>
+                  <a href="/uploads/{{ d.stored_name }}" target="_blank">View</a>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="text-muted">No documents uploaded.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <hr>
+      <h5>Add expense</h5>
+      <form method="post" action="/vehicles/{{ vehicle.id }}/expense" enctype="multipart/form-data">
+        <div class="row g-2">
+          <div class="col-md-3"><input name="date" class="form-control" type="date"></div>
+          <div class="col-md-3"><select name="category" class="form-select">
+            <option>LC Charges</option>
+            <option>Customs Duty</option>
+            <option>Petrol & Travel</option>
+            <option>Woof Charges</option>
+            <option>Clean & Repair</option>
+            <option>Sales & Commission</option>
+            <option>Interest</option>
+            <option>Accessory</option>
+            <option>Others</option>
+          </select></div>
+          <div class="col-md-3"><input name="description1" class="form-control" placeholder="Description"></div>
+          <div class="col-md-3"><input name="amount" class="form-control" type="number" step="0.01" placeholder="Amount"></div>
+        </div>
+        <div class="row g-2 mt-0">
+          <div class="col-md-8"><input name="receipt" class="form-control" type="file" accept=".pdf,image/*"></div>
+          <div class="col-md-4 d-grid"><button class="btn btn-sm btn-primary">Add expense</button></div>
+        </div>
+      </form>
+
+      {% if not vehicle.sold %}
+      <hr>
+      <h5>Sell vehicle</h5>
+      {% if vehicle.get('category') != 'inventory' %}
+        <div class="alert alert-warning">Move this vehicle to Inventory before marking it as sold.</div>
+      {% endif %}
+      <form method="post" action="/vehicles/{{ vehicle.id }}/sell">
+        <div class="row">
+          <div class="col-md-3 mb-2"><label>Sale price</label><input name="sale_price" class="form-control" type="number" step="0.01"></div>
+          <div class="col-md-3 mb-2"><label>Tax rate (%)</label><input name="tax_rate" class="form-control" type="number" step="0.01" value="10"></div>
+          <div class="col-md-3 mb-2"><label>Payment</label><input name="payment_method" class="form-control" value="Cash"></div>
+          <div class="col-md-3 mb-2"><label>&nbsp;</label><button class="btn btn-success w-100" {% if vehicle.get('category') != 'inventory' %}disabled{% endif %}>Mark as Sold</button></div>
+        </div>
+        <div class="mb-2"><label>Notes</label><input name="notes" class="form-control"></div>
+      </form>
+      {% else %}
+        <div class="alert alert-success">Vehicle sold.</div>
+      {% endif %}
+
+    </div>
+    {% include "_footer.html" %}
+  </body>
+</html>

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tax Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  </head>
+  <body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark app-navbar mb-4">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">Lion Car Sale</a>
+        <div class="d-flex gap-2">
+          <a class="btn btn-light" href="/vehicles">Vehicles</a>
+          <a class="btn btn-light" href="/vehicles/sold">Sold</a>
+          <a class="btn btn-light" href="/sales">Sales</a>
+          <a class="btn btn-light" href="/tax">Tax</a>
+          <a class="btn btn-light" href="/reports/taxes">Reports</a>
+        </div>
+      </div>
+    </nav>
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-end flex-wrap gap-2">
+        <div>
+          <div class="text-muted">Analytics</div>
+          <h3 class="app-page-title mb-0">Monthly Tax Report ({{ year }})</h3>
+        </div>
+        <form class="d-flex gap-2" method="get" action="/reports/taxes">
+          <input name="year" class="form-control" style="width: 120px;" type="number" value="{{ year }}">
+          <button class="btn btn-primary">Go</button>
+        </form>
+      </div>
+
+      <div class="row mt-3 g-3">
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body">
+              <div class="text-muted">Sales</div>
+              <div class="fs-5">${{ '%.2f'|format(totals.sales_total) }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body">
+              <div class="text-muted">Tax Liability</div>
+              <div class="fs-5">${{ '%.2f'|format(totals.tax_liability) }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body">
+              <div class="text-muted">Tax Paid</div>
+              <div class="fs-5">${{ '%.2f'|format(totals.tax_paid) }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-danger">
+            <div class="card-body">
+              <div class="text-muted">Tax Due (Now)</div>
+              <div class="fs-5 text-danger">${{ '%.2f'|format(totals.tax_due) }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-body">
+          <canvas id="taxChart" height="110"></canvas>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-body">
+          <h5 class="card-title">Monthly Breakdown</h5>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th class="text-end">Sales</th>
+                  <th class="text-end">Tax liability</th>
+                  <th class="text-end">Tax paid</th>
+                  <th class="text-end">Tax due</th>
+                </tr>
+              </thead>
+              <tbody id="breakdownBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% include "_footer.html" %}
+
+    <script>
+      const chartData = JSON.parse({{ chart_data|tojson }});
+      const tableBody = document.getElementById('breakdownBody');
+
+      function money(n) {
+        return '$' + (Number(n || 0).toFixed(2));
+      }
+
+      for (let i = 0; i < chartData.labels.length; i++) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${chartData.labels[i]}</td>
+          <td class="text-end">${money(chartData.monthly_sales[i])}</td>
+          <td class="text-end">${money(chartData.monthly_tax_liability[i])}</td>
+          <td class="text-end">${money(chartData.monthly_tax_paid[i])}</td>
+          <td class="text-end text-danger">${money(chartData.monthly_tax_due[i])}</td>
+        `;
+        tableBody.appendChild(row);
+      }
+
+      const ctx = document.getElementById('taxChart');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: chartData.labels,
+          datasets: [
+            {
+              label: 'Tax liability',
+              data: chartData.monthly_tax_liability,
+              backgroundColor: 'rgba(13,110,253,0.35)',
+              borderColor: 'rgba(13,110,253,0.9)',
+              borderWidth: 1
+            },
+            {
+              label: 'Tax paid',
+              data: chartData.monthly_tax_paid,
+              backgroundColor: 'rgba(25,135,84,0.35)',
+              borderColor: 'rgba(25,135,84,0.9)',
+              borderWidth: 1
+            },
+            {
+              label: 'Tax due',
+              data: chartData.monthly_tax_due,
+              type: 'line',
+              borderColor: 'rgba(220,53,69,0.95)',
+              backgroundColor: 'rgba(220,53,69,0.15)',
+              tension: 0.25,
+              yAxisID: 'y'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (value) => '$' + value
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: (context) => `${context.dataset.label}: ${money(context.parsed.y)}`
+              }
+            }
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

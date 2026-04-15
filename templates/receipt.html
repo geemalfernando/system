@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Receipt</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+      @media print {
+        .no-print { display: none; }
+      }
+    </style>
+  </head>
+  <body class="bg-white">
+    <nav class="navbar navbar-expand-lg navbar-dark app-navbar no-print">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">Lion Car Sale</a>
+        <div class="d-flex gap-2">
+          <a class="btn btn-light" href="/vehicles">Vehicles</a>
+          <a class="btn btn-light" href="/vehicles/sold">Sold</a>
+          <a class="btn btn-light" href="/sales">Sales</a>
+          <a class="btn btn-light" href="/tax">Tax</a>
+          <a class="btn btn-light" href="/reports/taxes">Reports</a>
+        </div>
+      </div>
+    </nav>
+    <div class="container my-4 receipt">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <h4>Lion Car Sale</h4>
+          <div>Receipt ID: {{ sale.id }}</div>
+          <div>Date: {{ sale.created_at.strftime('%Y-%m-%d %H:%M') if sale.created_at else '' }}</div>
+        </div>
+        <div class="text-end no-print">
+          <button class="btn btn-sm btn-primary" onclick="window.print()">Print</button>
+          <a class="btn btn-sm btn-secondary" href="/">Close</a>
+        </div>
+      </div>
+      <hr>
+      {% if vehicle %}
+        <h5>Buyer</h5>
+        <div>{{ sale.get('buyer','-') }} — {{ sale.get('phone','') }}</div>
+        <h5 class="mt-3">Vehicle</h5>
+        <div>{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }} ({{ vehicle.color }})</div>
+        <div>File No: {{ vehicle.get('file_number') or '-' }}</div>
+      {% else %}
+        <h5>Vehicle</h5>
+        <div>-</div>
+      {% endif %}
+
+      <h5 class="mt-3">Pricing</h5>
+      <table class="table table-bordered w-50">
+        <tr><th>Sale price</th><td>${{ '%.2f'|format(sale.sale_price if sale.sale_price is defined else sale.get('price',0)) }}</td></tr>
+        <tr><th>Tax</th><td>${{ '%.2f'|format(sale.tax_amount if sale.tax_amount is defined else sale.get('tax_amount',0)) }}</td></tr>
+        <tr><th>Cost basis</th><td>${{ '%.2f'|format(sale.get('cost_basis',0)) }}</td></tr>
+        <tr class="table-primary"><th>Net profit</th><th>${{ '%.2f'|format(sale.get('net_profit',0)) }}</th></tr>
+      </table>
+      <div class="mt-2">
+        <div><strong>Tax due date:</strong> {{ tax_due_at.strftime('%Y-%m-%d') if tax_due_at else '-' }}</div>
+        <div><strong>Tax paid:</strong> ${{ '%.2f'|format(tax_paid_total) }}</div>
+        <div><strong>Tax outstanding:</strong> <span class="{{ 'text-danger' if tax_outstanding > 0 else '' }}">${{ '%.2f'|format(tax_outstanding) }}</span></div>
+      </div>
+
+      {% if tax_payment_enabled and tax_outstanding > 0 %}
+      <div class="no-print mt-2">
+        <form method="post" action="/sales/{{ sale.id }}/tax-payment" class="row g-2 align-items-end" enctype="multipart/form-data">
+          <input type="hidden" name="next" value="/receipt/{{ sale.id }}">
+          <div class="col-md-4">
+            <label class="form-label mb-0">Pay tax amount</label>
+            <input name="amount" class="form-control" type="number" step="0.01" min="0.01" max="{{ tax_outstanding }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label mb-0">Note (optional)</label>
+            <input name="note" class="form-control" placeholder="Bank transfer ref, etc.">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label mb-0">Proof (optional)</label>
+            <input name="receipt" class="form-control" type="file" accept=".pdf,image/*">
+          </div>
+          <div class="col-md-2 d-grid">
+            <button class="btn btn-danger">Add payment</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+      <div><strong>Payment:</strong> {{ sale.get('payment_method','') }}</div>
+      {% if sale.get('notes') %}
+      <div class="mt-3"><strong>Notes:</strong><div>{{ sale.get('notes') }}</div></div>
+      {% endif %}
+      <div class="mt-5">______________________________<br>Seller signature</div>
+    </div>
+    <div class="no-print">{% include "_footer.html" %}</div>
+  </body>
+</html>
