@@ -148,6 +148,18 @@ class LocalStore:
                     return True
         return False
 
+    def move_vehicle_to_inventory(self, vehicle_id: str, *, vat_paid_amount: float, paid_at):
+        with self._lock:
+            data = self._read()
+            for v in data['vehicles']:
+                if v.get('id') == vehicle_id:
+                    v['category'] = 'inventory'
+                    v['vat_paid_on_inventory'] = round(float(vat_paid_amount or 0), 2)
+                    v['vat_paid_on_inventory_at'] = paid_at
+                    self._write(data)
+                    return True
+        return False
+
     # Sales
     def list_sales(self, *, limit: int | None = None):
         with self._lock:

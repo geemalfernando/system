@@ -30,7 +30,7 @@
       </div>
       {% if sales %}
       <table class="table">
-        <thead><tr><th>ID</th><th>Vehicle</th><th>File No</th><th>Sale price</th><th>Tax</th><th>Due date</th><th>Paid</th><th>Outstanding</th><th>Profit</th><th></th></tr></thead>
+        <thead><tr><th>ID</th><th>Vehicle</th><th>File No</th><th>Sale price</th><th>VAT</th><th>SSCL</th><th>Total Tax</th><th>Due date</th><th>Paid</th><th>Outstanding</th><th>Profit</th><th></th></tr></thead>
         <tbody>
         {% for s in sales %}
           <tr>
@@ -46,6 +46,8 @@
             </td>
             <td>{% if s.get('vehicle') %}{{ s.vehicle.get('file_number') or '-' }}{% else %}-{% endif %}</td>
             <td>${{ '%.2f'|format(s.sale_price) }}</td>
+            <td>${{ '%.2f'|format(s.get('vat_amount', 0)) }}</td>
+            <td>${{ '%.2f'|format(s.get('sscl_amount', 0)) }}</td>
             <td>${{ '%.2f'|format(s.tax_amount) }}</td>
             <td>{{ s.tax_due_at.strftime('%Y-%m-%d') if s.tax_due_at else '-' }}</td>
             <td>${{ '%.2f'|format(s.get('tax_paid_total', 0)) }}</td>

@@ -52,7 +52,10 @@
       <h5 class="mt-3">Pricing</h5>
       <table class="table table-bordered w-50">
         <tr><th>Sale price</th><td>${{ '%.2f'|format(sale.sale_price if sale.sale_price is defined else sale.get('price',0)) }}</td></tr>
-        <tr><th>Tax</th><td>${{ '%.2f'|format(sale.tax_amount if sale.tax_amount is defined else sale.get('tax_amount',0)) }}</td></tr>
+        <tr><th>Vehicle value (without VAT)</th><td>${{ '%.2f'|format(sale.get('taxable_value', 0)) }}</td></tr>
+        <tr><th>VAT</th><td>${{ '%.2f'|format(sale.get('vat_amount', 0)) }}</td></tr>
+        <tr><th>SSCL (1.25%)</th><td>${{ '%.2f'|format(sale.get('sscl_amount', 0)) }}</td></tr>
+        <tr><th>Total tax (VAT + SSCL)</th><td>${{ '%.2f'|format(sale.tax_amount if sale.tax_amount is defined else sale.get('tax_amount',0)) }}</td></tr>
         <tr><th>Cost basis</th><td>${{ '%.2f'|format(sale.get('cost_basis',0)) }}</td></tr>
         <tr class="table-primary"><th>Net profit</th><th>${{ '%.2f'|format(sale.get('net_profit',0)) }}</th></tr>
       </table>

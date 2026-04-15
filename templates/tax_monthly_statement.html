@@ -88,7 +88,9 @@
                   <th>Sale</th>
                   <th>Sale date</th>
                   <th>Due date</th>
-                  <th class="text-end">Tax</th>
+                  <th class="text-end">VAT</th>
+                  <th class="text-end">SSCL</th>
+                  <th class="text-end">Total Tax</th>
                   <th class="text-end">Paid (month)</th>
                   <th class="text-end">Paid (total)</th>
                   <th class="text-end">Outstanding</th>
@@ -103,6 +105,8 @@
                     <td><a href="/receipt/{{ s.id }}">{{ s.id }}</a></td>
                     <td>{{ s.created_at.strftime('%Y-%m-%d') if s.get('created_at') else '-' }}</td>
                     <td>{{ s.tax_due_at.strftime('%Y-%m-%d') if s.get('tax_due_at') else '-' }}</td>
+                    <td class="text-end">${{ '%.2f'|format(s.get('vat_amount', 0)) }}</td>
+                    <td class="text-end">${{ '%.2f'|format(s.get('sscl_amount', 0)) }}</td>
                     <td class="text-end">${{ '%.2f'|format(s.get('tax_amount', 0)) }}</td>
                     <td class="text-end">${{ '%.2f'|format(s.get('tax_paid_in_month', 0)) }}</td>
                     <td class="text-end">${{ '%.2f'|format(s.get('tax_paid_total', 0)) }}</td>

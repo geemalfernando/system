@@ -88,8 +88,17 @@ else:
     vehicles_col = None
     _local_store = LocalStore(APP_DATA_PATH / 'data.json')
 
-def compute_tax(amount, tax_rate):
-    return round(amount * (tax_rate / 100.0), 2)
+def compute_sale_taxes(sale_price: float):
+    taxable_value = round(float(sale_price or 0) / 1.18, 2)
+    vat_amount = round(float(sale_price or 0) - taxable_value, 2)
+    sscl_amount = round(taxable_value * 0.0125, 2)
+    total_tax = round(vat_amount + sscl_amount, 2)
+    return {
+        'taxable_value': taxable_value,
+        'vat_amount': vat_amount,
+        'sscl_amount': sscl_amount,
+        'total_tax': total_tax,
+    }
 
 def sum_expenses(expenses):
     return round(sum((e.get('amount', 0) for e in expenses)), 2)
@@ -235,6 +244,28 @@ def _sale_has_payment_in_range(sale: dict, start: datetime, end: datetime) -> bo
             return True
     return False
 
+def _float_or_zero(value) -> float:
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+def ensure_sale_tax_fields(sale: dict) -> dict:
+    sale_price = _float_or_zero(sale.get('sale_price'))
+    if sale_price <= 0:
+        sale.setdefault('taxable_value', 0.0)
+        sale.setdefault('vat_amount', 0.0)
+        sale.setdefault('sscl_amount', 0.0)
+        sale.setdefault('tax_amount', _float_or_zero(sale.get('tax_amount')))
+        return sale
+
+    tax_values = compute_sale_taxes(sale_price)
+    sale.setdefault('taxable_value', tax_values['taxable_value'])
+    sale.setdefault('vat_amount', tax_values['vat_amount'])
+    sale.setdefault('sscl_amount', tax_values['sscl_amount'])
+    sale.setdefault('tax_amount', tax_values['total_tax'])
+    return sale
+
 def _vehicle_for_sale(sale: dict):
     vehicle_id = sale.get('vehicle_id')
     if not vehicle_id:
@@ -291,6 +322,7 @@ def index():
     for s in all_sales:
         if STORAGE_BACKEND == 'mongo':
             s['id'] = str(s.get('_id'))
+        ensure_sale_tax_fields(s)
     summary = tax_summary(all_sales)
     return render_template('index.html', vehicles=vehicles, sales=sales, tax_summary=summary)
 
@@ -374,6 +406,8 @@ def create_vehicle():
             'color': form.get('color',''),
             'expenses': [],
             'category': 'shipping',
+            'vat_paid_on_inventory': 0.0,
+            'vat_paid_on_inventory_at': None,
             'sold': False,
             'created_at': datetime.utcnow(),
         }
@@ -413,10 +447,25 @@ def move_vehicle_to_inventory(vehicle_id):
     if bool(v.get('sold')):
         return redirect(url_for('vehicle_detail', vehicle_id=vehicle_id))
 
+    vat_paid_amount = _float_or_zero(request.form.get('vat_paid_amount'))
+    if vat_paid_amount < 0:
+        return 'VAT paid amount cannot be negative', 400
+
+    paid_at = datetime.utcnow()
+
     if STORAGE_BACKEND == 'mongo':
-        vehicles_col.update_one({'_id': _ObjectId(vehicle_id)}, {'$set': {'category': 'inventory'}})
+        vehicles_col.update_one(
+            {'_id': _ObjectId(vehicle_id)},
+            {
+                '$set': {
+                    'category': 'inventory',
+                    'vat_paid_on_inventory': round(vat_paid_amount, 2),
+                    'vat_paid_on_inventory_at': paid_at,
+                }
+            },
+        )
     else:
-        _local_store.set_vehicle_category(vehicle_id, category='inventory')
+        _local_store.move_vehicle_to_inventory(vehicle_id, vat_paid_amount=vat_paid_amount, paid_at=paid_at)
     return redirect(url_for('vehicle_detail', vehicle_id=vehicle_id))
 
 @app.route('/vehicles/<vehicle_id>/expense', methods=['POST'])
@@ -489,11 +538,27 @@ def sell_vehicle(vehicle_id):
         return 'Vehicle must be moved to inventory before marking as sold', 400
     form = request.form
     sale_price = float(form.get('sale_price') or 0)
-    tax_rate = float(form.get('tax_rate') or 0)
     payment_method = form.get('payment_method','Cash')
     notes = form.get('notes','')
+    tax_values = compute_sale_taxes(sale_price)
+    taxable_value = tax_values['taxable_value']
+    vat_amount = tax_values['vat_amount']
+    sscl_amount = tax_values['sscl_amount']
+    tax_amount = tax_values['total_tax']
 
-    tax_amount = compute_tax(sale_price, tax_rate)
+    vat_paid_on_inventory = round(min(_float_or_zero(v.get('vat_paid_on_inventory')), vat_amount), 2)
+    vat_paid_on_inventory_at = v.get('vat_paid_on_inventory_at') or datetime.utcnow()
+    tax_payments = []
+    if vat_paid_on_inventory > 0:
+        tax_payments.append(
+            {
+                'amount': vat_paid_on_inventory,
+                'paid_at': vat_paid_on_inventory_at,
+                'note': 'VAT paid when vehicle moved to inventory',
+                'source': 'inventory_vat',
+            }
+        )
+
     total_expenses = sum_expenses(v.get('expenses', []))
     cost_basis = v.get('cif_price', 0) + total_expenses
     net_profit = round(sale_price - cost_basis - tax_amount, 2)
@@ -501,9 +566,11 @@ def sell_vehicle(vehicle_id):
     sale_doc = {
         'vehicle_id': vehicle_id,
         'sale_price': sale_price,
-        'tax_rate': tax_rate,
+        'taxable_value': taxable_value,
+        'vat_amount': vat_amount,
+        'sscl_amount': sscl_amount,
         'tax_amount': tax_amount,
-        'tax_payments': [],
+        'tax_payments': tax_payments,
         'cost_basis': cost_basis,
         'total_expenses': total_expenses,
         'net_profit': net_profit,
@@ -532,6 +599,7 @@ def receipt(sale_id):
         sale = _local_store.get_sale(sale_id)
     if not sale:
         return 'Sale not found', 404
+    ensure_sale_tax_fields(sale)
     if STORAGE_BACKEND == 'mongo':
         vehicle = vehicles_col.find_one({'_id': _ObjectId(sale.get('vehicle_id'))}) if sale.get('vehicle_id') else None
         if vehicle:
@@ -572,6 +640,7 @@ def sales():
                 vehicle_map[vehicle_id] = _local_store.get_vehicle(vehicle_id)
             s['vehicle'] = vehicle_map.get(vehicle_id)
     for s in sales:
+        ensure_sale_tax_fields(s)
         s['tax_paid_total'] = tax_paid_total(s)
         s['tax_outstanding'] = tax_outstanding(s)
         s['tax_due_at'] = tax_due_at(s)
@@ -653,6 +722,7 @@ def tax_manage():
             sales = _local_store.list_sales()
 
     for s in sales:
+        ensure_sale_tax_fields(s)
         s['tax_paid_total'] = tax_paid_total(s)
         s['tax_outstanding'] = tax_outstanding(s)
         s['tax_due_at'] = tax_due_at(s)
@@ -687,6 +757,7 @@ def tax_monthly_statement():
 
     sales_due = []
     for s in candidates:
+        ensure_sale_tax_fields(s)
         due_at = tax_due_at(s)
         if not due_at or due_at < start or due_at >= end:
             continue
@@ -709,6 +780,7 @@ def tax_monthly_statement():
 
     paid_map = {s['id']: s for s in sales_due}
     for s in paid_candidates:
+        ensure_sale_tax_fields(s)
         sid = s.get('id') or str(s.get('_id')) if STORAGE_BACKEND == 'mongo' else s.get('id')
         if sid in paid_map:
             continue
@@ -763,6 +835,7 @@ def tax_monthly_statement_csv():
     sales = []
     seen = set()
     for s in candidates + paid_candidates:
+        ensure_sale_tax_fields(s)
         sid = s.get('id') or (str(s.get('_id')) if STORAGE_BACKEND == 'mongo' else None)
         if not sid or sid in seen:
             continue
@@ -778,6 +851,9 @@ def tax_monthly_statement_csv():
                 'chassis_no': v.get('chassis_no', ''),
                 'make': v.get('make', ''),
                 'model': v.get('model', ''),
+                'taxable_value': f"{float(s.get('taxable_value') or 0):.2f}",
+                'vat_amount': f"{float(s.get('vat_amount') or 0):.2f}",
+                'sscl_amount': f"{float(s.get('sscl_amount') or 0):.2f}",
                 'tax_amount': f"{float(s.get('tax_amount') or 0):.2f}",
                 'tax_paid_in_month': f"{_sale_payment_amount_in_range(s, start, end):.2f}",
                 'tax_paid_total': f"{tax_paid_total(s):.2f}",
@@ -788,7 +864,7 @@ def tax_monthly_statement_csv():
     sales.sort(key=lambda r: (r.get('due_date') or '9999-12-31', r.get('sale_date') or ''))
 
     buf = io.StringIO()
-    fieldnames = ['sale_id', 'sale_date', 'due_date', 'chassis_no', 'make', 'model', 'tax_amount', 'tax_paid_in_month', 'tax_paid_total', 'tax_outstanding']
+    fieldnames = ['sale_id', 'sale_date', 'due_date', 'chassis_no', 'make', 'model', 'taxable_value', 'vat_amount', 'sscl_amount', 'tax_amount', 'tax_paid_in_month', 'tax_paid_total', 'tax_outstanding']
     writer = csv.DictWriter(buf, fieldnames=fieldnames)
     writer.writeheader()
     for r in sales:
@@ -829,6 +905,7 @@ def tax_report():
     else:
         sales_for_year = _local_store.sales_between(start, end)
     for s in sales_for_year:
+        ensure_sale_tax_fields(s)
         created_at = s.get('created_at')
         if not created_at:
             continue
@@ -841,6 +918,7 @@ def tax_report():
     else:
         sales_for_due = _local_store.sales_between(earliest_for_due, end)
     for s in sales_for_due:
+        ensure_sale_tax_fields(s)
         due_at = tax_due_at(s)
         if not due_at or due_at < start or due_at >= end or due_at > now:
             continue
@@ -861,6 +939,7 @@ def tax_report():
     else:
         sales_with_payments = _local_store.sales_with_payments_between(start, end)
     for s in sales_with_payments:
+        ensure_sale_tax_fields(s)
         payments = s.get('tax_payments') or []
         for p in payments:
             paid_at = p.get('paid_at')
