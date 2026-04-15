@@ -36,8 +36,17 @@ app = Flask(
 )
 
 STORAGE_BACKEND = os.environ.get('STORAGE_BACKEND', 'local').lower()
-APP_DATA_DIR = os.environ.get('APP_DATA_DIR', str(Path.home() / '.lion_car_sale'))
+IS_VERCEL = os.environ.get('VERCEL') == '1'
+DEFAULT_APP_DATA_DIR = '/tmp/lion_car_sale' if IS_VERCEL else str(Path.home() / '.lion_car_sale')
+APP_DATA_DIR = os.environ.get('APP_DATA_DIR', DEFAULT_APP_DATA_DIR)
 APP_DATA_PATH = Path(APP_DATA_DIR).expanduser().resolve()
+
+try:
+    APP_DATA_PATH.mkdir(parents=True, exist_ok=True)
+except OSError:
+    # Serverless runtimes (for example Vercel) only allow writes under /tmp.
+    APP_DATA_PATH = Path('/tmp/lion_car_sale').resolve()
+    APP_DATA_PATH.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_UPLOAD_FOLDER = str(APP_DATA_PATH / 'uploads')
 UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', DEFAULT_UPLOAD_FOLDER)
@@ -52,8 +61,6 @@ ALLOWED_EXTENSIONS = {
     'pdf', 'png', 'jpg', 'jpeg', 'webp',
     'heic', 'heif',
 }
-
-_local_store = LocalStore(APP_DATA_PATH / 'data.json')
 
 def _ensure_mongo():
     try:
@@ -75,9 +82,11 @@ if STORAGE_BACKEND == 'mongo':
     _mongo_client, _mongo_db, _ObjectId = _ensure_mongo()
     sales_col = _mongo_db.sales
     vehicles_col = _mongo_db.vehicles
+    _local_store = None
 else:
     sales_col = None
     vehicles_col = None
+    _local_store = LocalStore(APP_DATA_PATH / 'data.json')
 
 def compute_tax(amount, tax_rate):
     return round(amount * (tax_rate / 100.0), 2)
