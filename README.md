@@ -52,11 +52,13 @@ python server.py
 
 MongoDB (optional)
 
-- Set `STORAGE_BACKEND=mongo` and `DATABASE_URL` (example uses your MongoDB connection string):
+- Copy `.env.example` to `.env`, set `STORAGE_BACKEND=mongo`, and add your own `DATABASE_URL`.
 
 ```bash
-export STORAGE_BACKEND=mongo
-export DATABASE_URL="mongodb+srv://geemal:Fernando1976@geemal.z9d7ccy.mongodb.net/lion_car_sale?retryWrites=true&w=majority&appName=geemal"
+cp .env.example .env
+# In .env:
+STORAGE_BACKEND=mongo
+DATABASE_URL="mongodb+srv://<username>:<password>@<cluster>/<database>?retryWrites=true&w=majority"
 python server.py
 ```
 
